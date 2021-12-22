@@ -1,6 +1,7 @@
 from flask import Flask, render_template, redirect, url_for, request, session
 from flask_db2 import DB2
 from dotenv import load_dotenv
+
 load_dotenv()
 import os
 import process
@@ -74,6 +75,47 @@ def register():
     cur.close()
     del cur
     return render_template('register.html', message=message)
+
+
+@app.route('/logout')
+def logout():
+    session.pop("ses_user", None)
+    return redirect(url_for("login"))
+
+
+@app.route('/main-view', methods=['GET', 'POST'])
+def mainView():
+    if "ses_user" in session:
+        user = session["ses_user"]
+        cur = db.connection.cursor()
+        cur.execute(
+            "select startort,zielort,status, transportmittel.icon,fid from fahrt join reservieren on fahrt.fid = reservieren.fahrt join transportmittel on fahrt.transportmittel = transportmittel.tid where reservieren.kunde =? ",
+            (user[0],))
+        result = cur.fetchall()
+        booked_trips = process.process_list(result)
+        cur.execute(
+            "select startort,zielort,status,fahrtkosten,transportmittel.icon,fid from fahrt join transportmittel on fahrt.transportmittel = transportmittel.tid where  maxPlaetze>0")
+        result = cur.fetchall()
+        availabe_rides = process.process_list(result)
+
+        cur.close()
+        del cur
+        return render_template('main_view.html', booked_trips=booked_trips, availabe_rides=availabe_rides)
+    else:
+        return redirect(url_for("login"))
+
+
+@app.route('/view-drive/<fid>')
+def coursedetails(fid):
+    if "ses_user" in session:
+        user = session["ses_user"]
+        cur = db.connection.cursor()
+
+        cur.close()
+        del cur
+        return render_template('view_drive.html')
+    else:
+        return redirect(url_for("login"))
 
 
 if __name__ == '__main__':
