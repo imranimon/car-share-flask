@@ -9,6 +9,14 @@ def process_list(result):
         return process_result
 
 
+def make_single_list(result):
+    data = []
+    if result is not None:
+        for item in result:
+            data.append(item)
+    return data
+
+
 def dictfetchall(cur):
     results = []
     for row in cur.fetchall():

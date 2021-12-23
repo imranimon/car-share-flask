@@ -13,18 +13,18 @@
 <!-- Navigation -->
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
     <div class="container">
-        <a style="color: lime" class="navbar-brand" href="/">Car Share</a>
+        <a style="color: lime" class="navbar-brand" href="#">Car Share</a>
         <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarResponsive"
                 aria-controls="navbarResponsive" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
         </button>
-        <div class="collapse navbar-collapse" id="navbarResponsive">
+        <div class="collapse navbar-collapse d-flex justify-content-between" id="navbarResponsive">
             <ul class="navbar-nav ml-auto">
                 <li class="nav-item">
-                    <a style="color: #31e331" class="nav-link" href="/new-drive">Create Trip</a>
+                    <a class="nav-link text-white" href="/new-drive">Create Trip</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="/logout">Logout</a>
+                    <a class="nav-link text-white" href="/logout">Logout</a>
                 </li>
             </ul>
         </div>
@@ -35,14 +35,14 @@
 <div class="container pt-5">
     <div class="row">
         <div class="row py-3">
-            <h2>Booked Rides</h2>
+            <h2 class="border-bottom border-2">Booked Rides</h2>
         </div>
         <div class="row">
             {% if booked_trips %}
                 {% for i in booked_trips %}
                     <div class="col-md-3 mb-3">
-                        <div class="card">
-                            <a href="/view-drive/{{ i[4] }}"><img class="card-img-top"
+                        <div style="height: 350px" class="card">
+                            <a href="/view-drive/{{ i[4] }}"><img height="200" class="card-img-top"
                                                                   src="{{ url_for('static', filename=i[3]) }}"
                                                                   alt="Card image cap">
                             </a>
@@ -66,14 +66,14 @@
     </div>
     <div class="row">
         <div class="row py-3">
-            <h2>Availabe Rides</h2>
+            <h2 class="border-bottom border-2">Availabe Rides</h2>
         </div>
         <div class="row">
             {% if availabe_rides %}
                 {% for i in availabe_rides %}
                     <div class="col-md-3 mb-3">
-                        <div class="card">
-                            <a href="/view-drive/{{ i[5] }}"><img class="card-img-top"
+                        <div style="height: 350px" class="card">
+                            <a href="/view-drive/{{ i[5] }}"><img class="card-img-top" height="200"
                                                                   src="{{ url_for('static', filename=i[4]) }}"
                                                                   alt="Card image cap"></a>
                             <div class="card-body">

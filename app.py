@@ -105,25 +105,13 @@ def mainView():
         return redirect(url_for("login"))
 
 
-@app.route('/view-drive/<fid>')
-def viewDrive(fid):
-    if "ses_user" in session:
-        user = session["ses_user"]
-        cur = db.connection.cursor()
-
-        cur.close()
-        del cur
-        return render_template('view_drive.html')
-    else:
-        return redirect(url_for("login"))
-
-
 @app.route('/new-drive', methods=['GET', 'POST'])
 def newDrive():
     if "ses_user" in session:
         user = session["ses_user"]
         cur = db.connection.cursor()
         message = ''
+
         if request.method == "POST":
             start_from = request.form["from"]
             destination = request.form["to"]
@@ -135,14 +123,19 @@ def newDrive():
             date_time = request.form["dateTime"]
             [date, time] = date_time.split('T')
             formated_date_time = date + ' ' + time + ':' + '00'
+            cur_date_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
             if start_from is not None and destination is not None and max_capacity in (
                     1, 2, 3, 4, 5, 6, 7, 8, 9,
                     10) and (cost > 0) and transport is not None and date_time is not None and len(description) <= 50:
-                cur.execute(
-                    'INSERT INTO fahrt (startort, zielort, fahrtdatumzeit, maxPlaetze, fahrtkosten, anbieter, transportmittel, beschreibung)  VALUES (?,?,?,?,?,?,?,?)',
-                    (start_from, destination, formated_date_time, max_capacity, cost, user[0], transport, description))
-                return redirect(url_for("mainView"))
+                if cur_date_time > formated_date_time:
+                    message = ['Previous date is not allowed']
+                else:
+                    cur.execute(
+                        'INSERT INTO fahrt (startort, zielort, fahrtdatumzeit, maxPlaetze, fahrtkosten, anbieter, transportmittel, beschreibung)  VALUES (?,?,?,?,?,?,?,?)',
+                        (start_from, destination, formated_date_time, max_capacity, cost, user[0], transport,
+                         description))
+                    return redirect(url_for("mainView"))
             else:
                 message = ['All asterisk (*) fileds and required',
                            'The allowed value for Maximum Capacity is between 1 and 10',
@@ -151,6 +144,86 @@ def newDrive():
         cur.close()
         del cur
         return render_template('new_drive.html', message=message)
+    else:
+        return redirect(url_for("login"))
+
+
+@app.route('/view-drive/<fid>', methods=['GET', 'POST'])
+def viewDrive(fid):
+    if "ses_user" in session:
+        user = session["ses_user"]
+        cur = db.connection.cursor()
+        cur.execute(
+            "select fahrt.fid,fahrt.startort,fahrt.zielort,fahrt.fahrtdatumzeit,fahrt.maxPlaetze,fahrt.fahrtkosten,fahrt.status,fahrt.beschreibung,benutzer.bid, benutzer.email, transportmittel.icon from fahrt join benutzer on fahrt.anbieter=benutzer.bid join transportmittel on fahrt.transportmittel = transportmittel.tid where fahrt.fid=?",
+            (fid,))
+        result = cur.fetchone()
+        trip_details = process.make_single_list(result)
+
+        cur.execute('select * from reservieren where kunde = ? and fahrt = ?', (user[0], fid))
+        result = cur.fetchone()
+        already_booked = process.make_single_list(result)
+
+        cur.execute('select sum(anzPlaetze) from reservieren r where r.fahrt = ?', (fid,))
+        result = cur.fetchone()
+        totat_reserved = process.make_single_list(result)
+
+        if not totat_reserved[0]:
+            availabe_seat = trip_details[4]
+        else:
+            availabe_seat = trip_details[4] - totat_reserved[0]
+
+        error = ''
+        success = ''
+        if request.method == "POST":
+            seat = int(request.form['seat'])
+            if trip_details[8] == user[0]:
+                error = "You can't book your own trip"
+            elif trip_details[6] != 'offen':
+                error = "This trip has been closed"
+            elif seat not in (1, 2) and seat > int(trip_details[4]):
+                error = "Maximum 2 seats can be booked and you can't book more than the availabe seats"
+            elif len(already_booked) > 0:
+                error = 'Multipule bookings for same trip is not allowed'
+            else:
+                cur.execute('insert into reservieren (kunde, fahrt, anzPlaetze) values (?,?,?)', (user[0], fid, seat))
+                if cur.rowcount > 0:
+                    error = ''
+                    success = 'Booking Successfull'
+                else:
+                    error = 'Something went wrong. Booking failed'
+
+            # Updating availabe seat after booking
+            cur.execute(
+                "select fahrt.fid,fahrt.startort,fahrt.zielort,fahrt.fahrtdatumzeit,fahrt.maxPlaetze,fahrt.fahrtkosten,fahrt.status,fahrt.beschreibung,benutzer.bid, benutzer.email, transportmittel.icon from fahrt join benutzer on fahrt.anbieter=benutzer.bid join transportmittel on fahrt.transportmittel = transportmittel.tid where fahrt.fid=?",
+                (fid,))
+            result = cur.fetchone()
+            trip_details = process.make_single_list(result)
+
+            cur.execute('select sum(anzPlaetze) from reservieren r where r.fahrt = ?', (fid,))
+            result = cur.fetchone()
+            totat_reserved = process.make_single_list(result)
+
+            if not totat_reserved[0]:
+                availabe_seat = trip_details[4]
+            else:
+                availabe_seat = trip_details[4] - totat_reserved[0]
+        cur.close()
+        del cur
+        return render_template('view_drive.html', trip_details=trip_details, availabe_seat=availabe_seat, uid=user[0],
+                               error=error, success=success)
+    else:
+        return redirect(url_for("login"))
+
+
+@app.route('/delete-trip/<fid>', methods=['GET', 'POST'])
+def deleteTrip(fid):
+    if "ses_user" in session:
+        user = session["ses_user"]
+        cur = db.connection.cursor()
+        print(fid)
+        cur.close()
+        del cur
+        return render_template('delete_trip.html')
     else:
         return redirect(url_for("login"))
 
