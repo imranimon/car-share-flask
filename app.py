@@ -1,6 +1,7 @@
 from flask import Flask, render_template, redirect, url_for, request, session
 from flask_db2 import DB2
 from dotenv import load_dotenv
+from datetime import datetime
 
 load_dotenv()
 import os
@@ -47,10 +48,10 @@ def login():
             if result:
                 session["ses_user"] = loggedinUser
                 session['logged_in'] = True
-                return redirect(url_for("index"))
+                return redirect(url_for("mainView"))
             else:
                 session['logged_in'] = False
-                message = "Please input valid information to Login"
+                message = "Email Is Not Valid"
     cur.close()
     del cur
     return render_template('login.html', message=message)
@@ -63,7 +64,6 @@ def register():
     if request.method == "POST":
         email = request.form["email"]
         name = request.form["name"]
-        print(email, name)
         cur.execute("select * from benutzer where email=?", (email,))
         result = cur.fetchall()
 
@@ -106,7 +106,7 @@ def mainView():
 
 
 @app.route('/view-drive/<fid>')
-def coursedetails(fid):
+def viewDrive(fid):
     if "ses_user" in session:
         user = session["ses_user"]
         cur = db.connection.cursor()
@@ -114,6 +114,43 @@ def coursedetails(fid):
         cur.close()
         del cur
         return render_template('view_drive.html')
+    else:
+        return redirect(url_for("login"))
+
+
+@app.route('/new-drive', methods=['GET', 'POST'])
+def newDrive():
+    if "ses_user" in session:
+        user = session["ses_user"]
+        cur = db.connection.cursor()
+        message = ''
+        if request.method == "POST":
+            start_from = request.form["from"]
+            destination = request.form["to"]
+            max_capacity = int(request.form["maxCapacity"])
+            cost = int(request.form["cost"])
+            transport = request.form["transport"]
+            description = request.form["description"]
+
+            date_time = request.form["dateTime"]
+            [date, time] = date_time.split('T')
+            formated_date_time = date + ' ' + time + ':' + '00'
+
+            if start_from is not None and destination is not None and max_capacity in (
+                    1, 2, 3, 4, 5, 6, 7, 8, 9,
+                    10) and (cost > 0) and transport is not None and date_time is not None and len(description) <= 50:
+                cur.execute(
+                    'INSERT INTO fahrt (startort, zielort, fahrtdatumzeit, maxPlaetze, fahrtkosten, anbieter, transportmittel, beschreibung)  VALUES (?,?,?,?,?,?,?,?)',
+                    (start_from, destination, formated_date_time, max_capacity, cost, user[0], transport, description))
+                return redirect(url_for("mainView"))
+            else:
+                message = ['All asterisk (*) fileds and required',
+                           'The allowed value for Maximum Capacity is between 1 and 10',
+                           'Cost have to be a greater than 0',
+                           'Length of description can not be greater than 50']
+        cur.close()
+        del cur
+        return render_template('new_drive.html', message=message)
     else:
         return redirect(url_for("login"))
 
